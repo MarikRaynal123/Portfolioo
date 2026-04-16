@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulateur de Paiement Biométrique — Marik Raynal</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: radial-gradient(circle at 50% 20%, #0b0f2e, #020204);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  color: white;
+}
+
+.page-title {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.page-title h1 {
+  font-size: 1.6rem;
+  letter-spacing: 2px;
+  color: #00eaff;
+  text-shadow: 0 0 15px #00eaff;
+  margin-bottom: 8px;
+}
+.page-title p {
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.terminal {
+  width: 100%;
+  max-width: 380px;
+  background: #0e1126;
+  border: 1px solid rgba(0, 234, 255, 0.2);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 0 40px rgba(0, 234, 255, 0.1);
+}
+
+.terminal-header {
+  background: #070a1a;
+  padding: 24px 20px;
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 234, 255, 0.15);
+}
+.terminal-header .brand {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #4fc3f7;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.terminal-header .amount {
+  font-size: 42px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: 1px;
+}
+.terminal-header .amount-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-top: 4px;
+}
+
+.terminal-body { padding: 24px 20px; }
+
+.merchant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-bottom: 22px;
+}
+.merchant-icon {
+  width: 38px; height: 38px;
+  background: rgba(0,234,255,0.1);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.merchant-name { font-size: 14px; font-weight: 500; color: #fff; }
+.merchant-sub { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+.scanner-zone {
+  border: 1.5px dashed rgba(0, 234, 255, 0.3);
+  border-radius: 14px;
+  padding: 30px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  user-select: none;
+}
+.scanner-zone:hover {
+  border-color: #00eaff;
+  background: rgba(0, 234, 255, 0.04);
+  box-shadow: 0 0 20px rgba(0, 234, 255, 0.08);
+}
+.scanner-zone.scanning {
+  border-color: #4fc3f7;
+  background: rgba(79, 195, 247, 0.06);
+  cursor: default;
+}
+.scanner-zone.success {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.08);
+  cursor: default;
+}
+.scanner-zone.error {
+  border-color: #ef5350;
+  background: rgba(239, 83, 80, 0.08);
+  cursor: default;
+}
+
+.fingerprint-svg { margin-bottom: 14px; display: inline-block; }
+.scanner-text { font-size: 14px; color: rgba(255,255,255,0.7); }
+.scanner-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 5px; }
+
+.progress-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  margin-top: 16px;
+  overflow: hidden;
+  display: none;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00b4d8, #00eaff);
+  border-radius: 2px;
+  transition: width 0.05s linear;
+}
+
+.result-box {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+}
+.result-box.success { background: rgba(76, 175, 80, 0.12); border: 1px solid rgba(76, 175, 80, 0.3); display: flex; }
+.result-box.error   { background: rgba(239, 83, 80, 0.12); border: 1px solid rgba(239, 83, 80, 0.3); display: flex; }
+.result-icon { font-size: 22px; flex-shrink: 0; }
+.result-title { font-size: 14px; font-weight: 500; }
+.result-title.success { color: #81c784; }
+.result-title.error   { color: #ef9a9a; }
+.result-sub { font-size: 12px; margin-top: 3px; }
+.result-sub.success { color: rgba(129, 199, 132, 0.8); }
+.result-sub.error   { color: rgba(239, 154, 154, 0.8); }
+
+.actions { margin-top: 16px; display: flex; gap: 8px; }
+.btn-retry, .btn-cancel {
+  flex: 1;
+  padding: 11px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  cursor: pointer;
+  transition: 0.2s;
+}
+.btn-retry:hover  { background: rgba(0, 234, 255, 0.1); border-color: #00eaff; color: #00eaff; }
+.btn-cancel:hover { background: rgba(255,255,255,0.08); }
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.author-note {
+  margin-top: 24px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.25);
+  text-align: center;
+}
+.author-note a { color: #00eaff; text-decoration: none; }
+
+@keyframes pulse-ring {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+.scanning .fp-lines { animation: pulse-ring 0.8s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  <h1>Simulateur Paiement Biométrique</h1>
+  <p>Projet personnel — BTS SIO SISR | Marik Raynal</p>
+</div>
+
+<div class="terminal">
+  <div class="terminal-header">
+    <div class="brand">BioPay Terminal</div>
+    <div class="amount" id="amountDisplay">47,50 €</div>
+    <div class="amount-label">Montant à payer</div>
+  </div>
+  <div class="terminal-body">
+
+    <div class="merchant-row">
+      <div class="merchant-icon" id="merchantIcon">🛒</div>
+      <div>
+        <div class="merchant-name" id="merchantName">Supermarché Central</div>
+        <div class="merchant-sub">Paiement biométrique sécurisé</div>
+      </div>
+    </div>
+
+    <div class="scanner-zone" id="scannerZone" onclick="startScan()">
+      <svg class="fingerprint-svg" width="70" height="70" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g class="fp-lines" id="fpLines">
+          <path d="M32 8C19.3 8 9 18.3 9 31c0 5.2 1.8 10 4.8 13.8" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 8c12.7 0 23 10.3 23 23 0 5.2-1.8 10-4.8 13.8" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 14c-9.4 0-17 7.6-17 17 0 3.6 1.1 7 3 9.7" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 14c9.4 0 17 7.6 17 17 0 3.6-1.1 7-3 9.7" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 20c-6.1 0-11 4.9-11 11 0 2.2.6 4.2 1.7 5.9" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 20c6.1 0 11 4.9 11 11 0 2.2-.6 4.2-1.7 5.9" stroke="#00eaff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M32 26c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5z" stroke="#00eaff" stroke-width="2.5" fill="none"/>
+        </g>
+      </svg>
+      <div class="scanner-text" id="scannerText">Poser le doigt pour payer</div>
+      <div class="scanner-sub" id="scannerSub">Cliquer pour simuler le scan</div>
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-icon" id="resultIcon"></div>
+      <div>
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-sub" id="resultSub"></div>
+      </div>
+    </div>
+
+    <div class="actions" id="actionBtns" style="display:none;">
+      <button class="btn-retry" onclick="resetScanner()">Réessayer</button>
+      <button class="btn-cancel" onclick="changeAmount()">Nouveau paiement</button>
+    </div>
+
+    <div class="info-row">
+      <span>🔒 Chiffrement AES-256</span>
+      <span id="refLabel">Réf: #BIO-2025</span>
+    </div>
+  </div>
+</div>
+
+<div class="author-note">
+  Projet réalisé par <strong style="color:rgba(255,255,255,0.5)">Marik Raynal</strong> — Veille technologique : paiements biométriques
+</div>
+
+<script>
+const payments = [
+  { amount: "47,50 €", merchant: "Supermarché Central", icon: "🛒", ref: "#BIO-2025" },
+  { amount: "12,90 €", merchant: "Boulangerie Martin",  icon: "🥖", ref: "#BIO-3847" },
+  { amount: "89,00 €", merchant: "Pharmacie du Centre", icon: "💊", ref: "#BIO-9012" },
+  { amount: "156,40 €",merchant: "Fnac",                icon: "📱", ref: "#BIO-5521" },
+  { amount: "6,50 €",  merchant: "Café de la Gare",     icon: "☕", ref: "#BIO-7743" },
+];
+let idx = 0, scanning = false, interval = null, progress = 0;
+
+function startScan() {
+  if (scanning) return;
+  scanning = true;
+  progress = 0;
+  const zone = document.getElementById('scannerZone');
+  zone.classList.add('scanning');
+  zone.onclick = null;
+  document.getElementById('scannerText').textContent = 'Analyse en cours...';
+  document.getElementById('scannerSub').textContent = "Lecture de l'empreinte digitale";
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  bar.style.display = 'block';
+  interval = setInterval(() => {
+    progress += 2;
+    fill.style.width = progress + '%';
+    if (progress >= 100) {
+      clearInterval(interval);
+      showResult(Math.random() > 0.25);
+    }
+  }, 40);
+}
+
+function showResult(success) {
+  const zone = document.getElementById('scannerZone');
+  zone.classList.remove('scanning');
+  zone.classList.add(success ? 'success' : 'error');
+  document.getElementById('scannerText').textContent = success ? 'Empreinte reconnue' : 'Empreinte non reconnue';
+  document.getElementById('scannerSub').textContent  = success ? 'Identité vérifiée' : 'Veuillez réessayer';
+  document.getElementById('progressBar').style.display = 'none';
+
+  const box = document.getElementById('resultBox');
+  box.className = 'result-box ' + (success ? 'success' : 'error');
+  document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
+  document.getElementById('resultTitle').className = 'result-title ' + (success ? 'success' : 'error');
+  document.getElementById('resultTitle').textContent = success ? 'Paiement accepté !' : 'Paiement refusé';
+  document.getElementById('resultSub').className = 'result-sub ' + (success ? 'success' : 'error');
+  document.getElementById('resultSub').textContent = success
+    ? 'Transaction validée — ' + document.getElementById('amountDisplay').textContent
+    : 'Empreinte non correspondante. Réessayez ou utilisez votre code PIN.';
+  document.getElementById('actionBtns').style.display = 'flex';
+  scanning = false;
+}
+
+function resetScanner() {
+  const zone = document.getElementById('scannerZone');
+  zone.classList.remove('scanning', 'success', 'error');
+  zone.onclick = startScan;
+  document.getElementById('scannerText').textContent = 'Poser le doigt pour payer';
+  document.getElementById('scannerSub').textContent  = 'Cliquer pour simuler le scan';
+  document.getElementById('resultBox').className = 'result-box';
+  document.getElementById('actionBtns').style.display = 'none';
+  progress = 0; scanning = false;
+}
+
+function changeAmount() {
+  idx = (idx + 1) % payments.length;
+  const d = payments[idx];
+  document.getElementById('amountDisplay').textContent = d.amount;
+  document.getElementById('merchantName').textContent  = d.merchant;
+  document.getElementById('merchantIcon').textContent  = d.icon;
+  document.getElementById('refLabel').textContent      = 'Réf: ' + d.ref;
+  resetScanner();
+}
+</script>
+</body>
+</html>
